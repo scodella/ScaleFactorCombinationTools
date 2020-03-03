@@ -210,7 +210,7 @@ if __name__ == '__main__':
     
     parser.add_option('--taggers'     , dest='taggers'     , help='Tagger(s) to be compared'            , default='deepcsv')
     parser.add_option('--years'       , dest='years'       , help='Year(s) to be compared'              , default='2016-2017-2018')
-    parser.add_option('--inputpath'   , dest='inputpath'   , help='Path where csv files are stored '    , default='')
+    parser.add_option('--inputpath'   , dest='inputpath'   , help='Path where csv files are stored '    , default='./CSVFiles')
     parser.add_option('--inputfiles'  , dest='inputfiles'  , help='Additional csv files to be compared' , default='')
     parser.add_option('--customfiles' , dest='customfiles' , help='Only use custom csv files'           , default=False, action='store_true')
     parser.add_option('--wps'         , dest='wps'         , help='Working point(s) to be compared'     , default='M')
@@ -226,8 +226,6 @@ if __name__ == '__main__':
         print 'Wrong choice of jet flavour:', opt.flavour, '-> exiting'
         exit()
 
-    inputFilePath = opt.inputpath if (opt.inputpath!='') else os.environ['CMSSW_BASE'] + '/src/PhysicsTools/NanoAODTools/data/btagSF/'
-
     if opt.customfiles:
         supported_btagSF.clear()
                      
@@ -236,9 +234,9 @@ if __name__ == '__main__':
         for csvfile in opt.inputfiles.split(','):
 
             if '/' not in csvfile:
-                csvfile = './' + csvfile
+                csvfile = opt.inputpath + '/' + csvfile
 
-            csvyear = csvfile.split('/')[-1].replace('.csv', '') + csvfile.split('/')[-2]
+            csvyear = csvfile.split('/')[-1].replace('.csv', '')
             years.append(csvyear)
 
             tagger = csvyear.split('_')[0].lower()
@@ -283,7 +281,7 @@ if __name__ == '__main__':
 
                     inputFileName = supported_btagSF[tagger][campaign]['inputFileName']
                     if '/' not in inputFileName:
-                        inputFileName = os.path.join(inputFilePath, inputFileName)
+                        inputFileName = os.path.join(opt.inputpath, inputFileName)
                     loaders = dataLoader.get_data(inputFileName)
 
                     for wp in supported_btagSF[tagger][campaign]['supported_wp']:
