@@ -56,7 +56,25 @@ supported_btagSF = {
                 2 : "incl"   # light
             },
             'supported_wp' : [ "L", "M", "T", "shape_corr"] 
-        }    
+        },   
+        'UL2017' : {
+            'inputFileName' : "DeepCSV_106XUL17SF.csv",
+            'measurement_types' : {
+                0 : "comb-mujets",  # b
+                1 : "comb-mujets",  # c
+                2 : "incl"   # light
+            },
+            'supported_wp' : [ "L", "M", "T", "shape_corr"]
+        }, 
+        'UL2018' : {
+            'inputFileName' : "DeepCSV_106XUL18SF.csv",
+            'measurement_types' : {
+                0 : "comb-mujets",  # b
+                1 : "comb-mujets",  # c
+                2 : "incl"   # light
+            },
+            'supported_wp' : [ "L", "M", "T", "shape_corr"]
+        },
     },
     'deepjet' : {
         'Legacy2016' : {
@@ -85,7 +103,25 @@ supported_btagSF = {
                 2 : "incl"   # light
             },
             'supported_wp' : [ "L", "M", "T", "shape_corr"]
-        }    
+        },
+        'UL2017' : {
+            'inputFileName' : "DeepJet_106XUL17SF.csv",
+            'measurement_types' : {
+                0 : "comb-mujets",  # b
+                1 : "comb-mujets",  # c
+                2 : "incl"   # light
+            },
+            'supported_wp' : [ "L", "M", "T", "shape_corr"]
+        },
+        'UL2018' : { 
+            'inputFileName' : "DeepJet_106XUL18SF.csv",        
+            'measurement_types' : {  
+                0 : "comb-mujets",  # b
+                1 : "comb-mujets",  # c
+                2 : "incl"   # light
+            },
+            'supported_wp' : [ "L", "M", "T", "shape_corr"]
+        },    
     },
     'cmva' : {
         '2016' : {
@@ -104,7 +140,7 @@ def plotScaleFactors(plottitle, scaleFactors, plotformat):
 
     ROOT.gROOT.SetBatch(ROOT.kTRUE)
 
-    yoff = 0.85 if ('_T_' in plottitle) else 0.35
+    yoff = 0.85 if ('_T2_' in plottitle) else 0.35
     leg = ROOT.TLegend(0.18, yoff, 0.50, yoff-0.2)
     leg.SetFillColor(ROOT.kWhite) 
     leg.SetBorderSize(0)
@@ -269,16 +305,14 @@ if __name__ == '__main__':
     for taggername in opt.taggers.split('-'):
         tagger = taggername.lower()
         if tagger in supported_btagSF:
-
             for campaign in supported_btagSF[tagger]:
 
                 useThisCampaign = False
                 for year in years:
                     if year in campaign:
                         useThisCampaign = True
-                
-                if useThisCampaign:
 
+                if useThisCampaign:
                     inputFileName = supported_btagSF[tagger][campaign]['inputFileName']
                     if '/' not in inputFileName:
                         inputFileName = os.path.join(opt.inputpath, inputFileName)
@@ -302,15 +336,13 @@ if __name__ == '__main__':
 
                                     for data in loaders:
                                         for e in data.entries:
-
                                             if e.params.measurementType==meastype and e.params.operatingPoint==wp_btv and e.params.jetFlavor==flavour:
                                                 if e.params.sysType in function:
-
                                                     formula = '(x>='+str(e.params.ptMin)+' && x<'+str(e.params.ptMax)+') ? '+e.formula
                                                     function[e.params.sysType] = function[e.params.sysType].replace(' 0. ',formula+' : 0. ')
                                                     minPt = min(minPt, e.params.ptMin)
                                                     maxPt = max(maxPt, e.params.ptMax)
-                                                
+
                                     for syst in function:
                                         systFunction = ROOT.TF1(title+'_'+syst, function[syst], minPt, maxPt)
                                         width = 3 if (syst=='central') else 1
