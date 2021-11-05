@@ -57,6 +57,24 @@ supported_btagSF = {
             },
             'supported_wp' : [ "L", "M", "T", "shape_corr"] 
         },   
+        'UL2016APV' : {
+            'inputFileName' : "DeepCSV_106XUL16APVSF.csv",
+            'measurement_types' : {
+                0 : "comb-mujets",  # b
+                1 : "comb-mujets",  # c
+                2 : "incl"   # light
+            },
+            'supported_wp' : [ "L", "M", "T", "shape_corr"]
+        },
+        'UL2016' : {
+            'inputFileName' : "DeepCSV_106XUL16SF.csv",
+            'measurement_types' : {
+                0 : "comb-mujets",  # b
+                1 : "comb-mujets",  # c
+                2 : "incl"   # light
+            },
+            'supported_wp' : [ "L", "M", "T", "shape_corr"]
+        },
         'UL2017' : {
             'inputFileName' : "DeepCSV_106XUL17SF.csv",
             'measurement_types' : {
@@ -97,6 +115,24 @@ supported_btagSF = {
         },
         '2018' : {
             'inputFileName' : "DeepJet_102XSF_V1.csv",
+            'measurement_types' : {
+                0 : "comb-mujets",  # b
+                1 : "comb-mujets",  # c
+                2 : "incl"   # light
+            },
+            'supported_wp' : [ "L", "M", "T", "shape_corr"]
+        },
+        'UL2016APV' : {
+            'inputFileName' : "DeepJet_106XUL16APVSF.csv",
+            'measurement_types' : {
+                0 : "comb-mujets",  # b
+                1 : "comb-mujets",  # c
+                2 : "incl"   # light
+            },
+            'supported_wp' : [ "L", "M", "T", "shape_corr"]
+        },
+        'UL2016' : {
+            'inputFileName' : "DeepJet_106XUL16SF.csv",
             'measurement_types' : {
                 0 : "comb-mujets",  # b
                 1 : "comb-mujets",  # c
@@ -309,7 +345,7 @@ if __name__ == '__main__':
 
                 useThisCampaign = False
                 for year in years:
-                    if year in campaign:
+                    if year==campaign:
                         useThisCampaign = True
 
                 if useThisCampaign:
@@ -332,7 +368,7 @@ if __name__ == '__main__':
                                     
                                     minPt, maxPt = 999999., -1.
                                     title = tagger + '_' + campaign + '_' + wp + '_' + meastype
-                                    function = { 'central' : ' 0. ', 'up' : ' 0. ', 'down' : ' 0. ' }
+                                    function = { 'central' : ' 0. ', 'up' : ' 0. ', 'down' : ' 0. ' } #, 'up_correlated' : ' 0. ', 'down_correlated' : ' 0. ', 'up_uncorrelated' : ' 0. ', 'down_uncorrelated' : ' 0. ' }
 
                                     for data in loaders:
                                         for e in data.entries:
@@ -344,9 +380,12 @@ if __name__ == '__main__':
                                                     maxPt = max(maxPt, e.params.ptMax)
 
                                     for syst in function:
+                                        if function[syst]==' 0. ': continue
                                         systFunction = ROOT.TF1(title+'_'+syst, function[syst], minPt, maxPt)
                                         width = 3 if (syst=='central') else 1
                                         style = 1 if (syst=='central') else 2
+                                        if 'uncorrelated' in syst: style = 3
+                                        elif 'correlated' in syst: style = 4
                                         systFunction.SetLineWidth(width)
                                         systFunction.SetLineStyle(style)
                                         systFunction.SetLineColor(color)
