@@ -1,0 +1,17 @@
+DeepCSV;OperatingPoint, measurementType, sysType, jetFlavor, etaMin, etaMax, ptMin, ptMax, discrMin, discrMax, formula
+0, TagCount, central, 0, -2.4, 2.4, 30, 600, 0, 1, "0.959"
+0, TagCount, up,      0, -2.4, 2.4, 30, 600, 0, 1, "0.959+0.0453"
+0, TagCount, down,    0, -2.4, 2.4, 30, 600, 0, 1, "0.959-0.0453"
+0, TagCount, up_statistic,      0, -2.4, 2.4, 30, 600, 0, 1, "0.959+0.00174"
+0, TagCount, down_statistic,    0, -2.4, 2.4, 30, 600, 0, 1, "0.959-0.00174"
+1, TagCount, central, 0, -2.4, 2.4, 30, 600, 0, 1, "0.925"
+1, TagCount, up,      0, -2.4, 2.4, 30, 600, 0, 1, "0.925+0.0325"
+1, TagCount, down,    0, -2.4, 2.4, 30, 600, 0, 1, "0.925-0.0325"
+1, TagCount, up_statistic,      0, -2.4, 2.4, 30, 600, 0, 1, "0.925+0.00175"
+1, TagCount, down_statistic,    0, -2.4, 2.4, 30, 600, 0, 1, "0.925-0.00175"
+2, TagCount, central, 0, -2.4, 2.4, 30, 600, 0, 1, "0.899"
+2, TagCount, up,      0, -2.4, 2.4, 30, 600, 0, 1, "0.899+0.0365"
+2, TagCount, down,    0, -2.4, 2.4, 30, 600, 0, 1, "0.899-0.0365"
+2, TagCount, up_statistic,      0, -2.4, 2.4, 30, 600, 0, 1, "0.899+0.00178"
+2, TagCount, down_statistic,    0, -2.4, 2.4, 30, 600, 0, 1, "0.899-0.00178"
+

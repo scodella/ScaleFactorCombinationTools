@@ -1,0 +1,111 @@
+TString LegComp = "comb (no sample dependence)";
+TString CompTitle = "_CompNoSampleDependence";
+ 
+float xComp[9]  = {25., 40., 60., 85., 120., 170., 250., 450., 800.};
+float exComp[9] = { 5., 10., 10., 15.,  20.,  30.,  50., 150., 200.};
+
+double funSFb_Comp_CSVv2L(double xx) {
+  double SFb = SFb = 0.887973*((1.+(0.0523821*xx))/(1.+(0.0460876*xx)));
+  return SFb;
+};  
+
+float SFb_Comp_error_CSVv2L[] = {
+  0.0229587, 
+  0.00768633, 
+  0.00581377, 
+  0.00521596, 
+  0.00413102, 
+  0.0041927, 
+  0.00890183, 
+  0.0142091, 
+  0.0197221
+};
+
+double funSFb_Comp_CSVv2M(double xx) {
+  double SFb = 0.561694*((1.+(0.31439*xx))/(1.+(0.17756*xx)));
+  return SFb;
+}
+float SFb_Comp_error_CSVv2M[] = {
+  0.0370744, 
+  0.00995909, 
+  0.00735735, 
+  0.00726552, 
+  0.00564967, 
+  0.00652676, 
+  0.0111144, 
+  0.0194543, 
+  0.0321448,
+};
+
+
+double funSFb_Comp_CSVv2T(double xx) {
+  double SFb = 0.817647*((1.+(0.038703*xx))/(1.+(0.0312388*xx)));
+
+  return SFb;
+}
+
+float SFb_Comp_error_CSVv2T[] = {
+  0.0326888, 
+  0.0118847, 
+  0.00910059, 
+  0.0092945, 
+  0.00867169, 
+  0.0095481, 
+  0.0167115, 
+  0.0292375, 
+  0.0530721
+};
+
+
+double funSFb_Comp_DeepCSVL(double xx) {
+  double SFb = 0.733112*((1.+(0.336449*xx))/(1.+(0.246914*xx)));
+  return SFb;
+};  
+
+float SFb_Comp_error_DeepCSVL[] = {
+  0.0177454,
+  0.00620674,
+  0.0069962,
+  0.00556496,
+  0.00488085,
+  0.00494197,
+  0.0115153,
+  0.0160252,
+  0.0260115
+};
+
+double funSFb_Comp_DeepCSVM(double xx) {
+  double SFb =  0.637301*((1.+(0.479205*xx))/(1.+(0.311514*xx)));
+  return SFb;
+}
+float SFb_Comp_error_DeepCSVM[] = {
+  0.0175666,
+  0.0101609,
+  0.00837927,
+  0.00797243,
+  0.00709827,
+  0.00613675,
+  0.0127647,
+  0.0217441,
+  0.0288948
+};
+
+
+double funSFb_Comp_DeepCSVT(double xx) {
+  double SFb = 0.506673*((1.+(0.464958*xx))/(1.+(0.239689*xx)));
+
+  return SFb;
+}
+
+float SFb_Comp_error_DeepCSVT[] = {
+  0.0256578,
+  0.0135115,
+  0.00991295,
+  0.00992993,
+  0.00963954,
+  0.0116614,
+  0.0181388,
+  0.0316829,
+  0.0373158
+};
+

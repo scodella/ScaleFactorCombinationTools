@@ -1,0 +1,10 @@
+CSVv2;OperatingPoint, measurementType, sysType, jetFlavor, etaMin, etaMax, ptMin, ptMax, discrMin, discrMax, formula
+0, TagCount, central, 0, -2.4, 2.4, 30, 600, 0, 1, "0.956"
+0, TagCount, up,      0, -2.4, 2.4, 30, 600, 0, 1, "0.956+0.0484"
+0, TagCount, down,    0, -2.4, 2.4, 30, 600, 0, 1, "0.956-0.0484"
+1, TagCount, central, 0, -2.4, 2.4, 30, 600, 0, 1, "0.915"
+1, TagCount, up,      0, -2.4, 2.4, 30, 600, 0, 1, "0.915+0.0344"
+1, TagCount, down,    0, -2.4, 2.4, 30, 600, 0, 1, "0.915-0.0344"
+2, TagCount, central, 0, -2.4, 2.4, 30, 600, 0, 1, "0.886"
+2, TagCount, up,      0, -2.4, 2.4, 30, 600, 0, 1, "0.886+0.0366"
+2, TagCount, down,    0, -2.4, 2.4, 30, 600, 0, 1, "0.886-0.0366"

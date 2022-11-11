@@ -1,0 +1,13 @@
+;OperatingPoint, measurementType, sysType, jetFlavor, etaMin, etaMax, ptMin, ptMax, discrMin, discrMax, formula 
+0, wpluscharm, down_type2, 1, -2.4, 2.4, 25, 1000, -1, 1, "0.997061-0.005448" 
+0, wpluscharm, down_type3, 1, -2.4, 2.4, 25, 1000, -1, 1, "0.997061-0.020539" 
+0, wpluscharm, up_type2, 1, -2.4, 2.4, 25, 1000, -1, 1, "0.997061+0.005448" 
+0, wpluscharm, up_type3, 1, -2.4, 2.4, 25, 1000, -1, 1, "0.997061+0.020539" 
+1, wpluscharm, down_type2, 1, -2.4, 2.4, 25, 1000, -1, 1, "0.964549-0.015177" 
+1, wpluscharm, down_type3, 1, -2.4, 2.4, 25, 1000, -1, 1, "0.964549-0.034735" 
+1, wpluscharm, up_type2, 1, -2.4, 2.4, 25, 1000, -1, 1, "0.964549+0.015177" 
+1, wpluscharm, up_type3, 1, -2.4, 2.4, 25, 1000, -1, 1, "0.964549+0.034735" 
+2, wpluscharm, down_type2, 1, -2.4, 2.4, 25, 1000, -1, 1, "0.925037-0.021907" 
+2, wpluscharm, down_type3, 1, -2.4, 2.4, 25, 1000, -1, 1, "0.925037-0.063225" 
+2, wpluscharm, up_type2, 1, -2.4, 2.4, 25, 1000, -1, 1, "0.925037+0.021907" 
+2, wpluscharm, up_type3, 1, -2.4, 2.4, 25, 1000, -1, 1, "0.925037+0.063225" 

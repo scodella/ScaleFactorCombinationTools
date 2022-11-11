@@ -1,0 +1,46 @@
+#include <iostream>
+#include <fstream>
+#include <TROOT.h>
+#include <TMath.h>
+#include <TCanvas.h>
+#include <TPaveText.h>
+#include <TGraphErrors.h>
+#include <TH2F.h>
+#include <TF1.h>
+#include <TLegend.h>
+#include <TStyle.h>
+#include <TText.h>
+#include <TString.h>
+#include <TLatex.h>
+
+void AddComa(TString Tagger) {
+
+  ifstream InFile; InFile.open("./" + Tagger + "_lt.csv");
+  ofstream OutFile; OutFile.open("./" + Tagger + "_LT.csv");
+
+  TString Dummy[11];
+
+  while (InFile) {
+
+    for (int dm = 0; dm<11; dm++) {
+
+      InFile >> Dummy[dm];
+
+      if (Dummy[dm]!="") {
+
+	if (dm<10) 
+	  OutFile << Dummy[dm] << ", ";
+	
+	if (dm==10)
+	  if (Dummy[dm]=="formula")
+	    OutFile << Dummy[dm] << endl;
+	  else
+	    OutFile << "\"" << Dummy[dm] << "\"" << endl;
+	
+      }
+
+    }
+
+  }
+
+}
