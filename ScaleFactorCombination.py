@@ -20,10 +20,12 @@ if __name__ == '__main__':
     parser.add_option('--combination'    , dest='combination'    , help='Combination to be performed'    , default='all')
     parser.add_option('--workingpoint'   , dest='workingpoint'   , help='Working points to be analysed'  , default='all')
     parser.add_option('--vetomethod'     , dest='vetomethod'     , help='Measurement methods to veto'    , default='NONE')
+    parser.add_option('--maskmethod'     , dest='maskmethod'     , help='Measurement methods to mask'    , default='NONE')
     parser.add_option('--plotoff'        , dest='plotoff'        , help='Don\'t make plots'              , default=False, action='store_true')
     parser.add_option('--store'          , dest='store'          , help='Store csv files'                , default=False, action='store_true')
     parser.add_option('--storebybins'    , dest='storebybins'    , help='Store csv files by bins'        , default=False, action='store_true')
     parser.add_option('--breaksyst'      , dest='breaksyst'      , help='Store systematics breakdown'    , default=False, action='store_true')
+    parser.add_option('--yearcorr'       , dest='yearcorr'       , help='Store year correlations'        , default=False, action='store_true')
     parser.add_option('--cjetsoff'       , dest='cjetsoff'       , help='Don\'t store SFs for c jets'    , default=False, action='store_true')
     parser.add_option('--forceptfit'     , dest='forceptfit'     , help='Force the pt-dependence fit'    , default=False, action='store_true')
     parser.add_option('--plotdir'        , dest='plotdir'        , help='Output directory for plots'     , default='./Plots')
@@ -44,7 +46,7 @@ if __name__ == '__main__':
 
     #ROOT.gROOT.ProcessLine('gErrorIgnoreLevel = 1001;')
 
-    if opt.storebybins: opt.store = True
+    if opt.storebybins or opt.breaksyst or opt.yearcorr: opt.store = True
 
     if opt.store:
         opt.storebyfunction = not opt.storebybins
@@ -52,7 +54,7 @@ if __name__ == '__main__':
         if not opt.cjetsoff: jetFlavoursToBeStored.append(ROOT.BTagEntry.FLAV_C)
 
     else:
-        opt.breaksyst = False
+        opt.storebyfunction = False
 
     opt.doptfit = not opt.plotoff or opt.storebyfunction or opt.forceptfit
 
@@ -71,7 +73,11 @@ if __name__ == '__main__':
 
     if opt.vetomethod!='None':
         for method in measurements.keys():
-            if method.lower() in opt.vetomethod.lower(): del measurements[method]
+            if method.lower() in opt.vetomethod.lower() and method not in vetoedMethods: vetoedMethods.append(method)
+
+    if opt.maskmethod!='None':
+        for method in measurements.keys():
+            if method.lower() in opt.maskmethod.lower() and method not in maskedMethods: maskedMethods.append(method) 
 
     # Loop on algorithms, combinations, and working points
     for algo in algorithms:
@@ -81,9 +87,11 @@ if __name__ == '__main__':
             wpFlag = '' if opt.workingpoint=='all' else '-'.join([ ''.join([ x for x in y if x.isupper() ]) for y in workingPoints ])
             csvFileNameList = [ algo+wpFlag, opt.campaign ]
             if opt.combination!='all': csvFileNameList.insert(1, '-'.join([ x for x in combinations ]))
+            if len(maskedMethods)>0: csvFileNameList.insert(csvFileNameList.index(opt.campaign), 'masked'+'-'.join([ measurements[x]['plotname'] for x in set(vetoedMethods+maskedMethods) ]))
 
             if opt.storebybins: csvFileNameList.append('Binned')
-            if opt.breaksyst: csvFileNameList.append('Breakdown')
+            if opt.breaksyst: csvFileNameList.append('BategoryBreakdown')
+            if opt.yearcorr: csvFileNameList.append('YearCorrelation')
 
             os.system('mkdir -p '+opt.csvfiledir)
             csvFile = ROOT.BTagCalibration(opt.csvfiledir+'/'+'_'.join(csvFileNameList)+'.csv')
@@ -94,9 +102,9 @@ if __name__ == '__main__':
                 measuredScaleFactors = OrderedDict() 
                 graphScaleFactors, graphScaleFactorsTotal = OrderedDict(), OrderedDict()
 
-                # Loop on the measurement methods ...
+                # loop on the measurement methods ...
                 for method in measurements:
-                    if comb in measurements[method]['data']:
+                    if comb in measurements[method]['data'] and method not in vetoedMethods:
 
                         measurementFileName = '/'.join([ 'Measurements', opt.campaign, algo+'_'+method+'.csv' ])
                         if not os.path.exists(measurementFileName): 
@@ -143,6 +151,14 @@ if __name__ == '__main__':
                                                 if systName in systematicPtCorrelated and systName in systematicPtUncorrelated:
                                                     print 'Error:', systName, 'assigned both as pt-correlated and pt-uncorrelated'
                                                     exit()
+
+                                                if systName not in systematicYearCorrelated and systName not in systematicYearUncorrelated:
+                                                    print 'Error:', systName, 'not assigned as year-correlated nor as year-uncorrelated'
+                                                    exit()
+
+                                                if systName in systematicYearCorrelated and systName in systematicYearUncorrelated:
+                                                    print 'Error:', systName, 'assigned both as year-correlated and year-uncorrelated'
+                                                    exit()
    
                                                 if systName not in type1Systematics and systName not in type2Systematics and systName not in type3Systematics:
                                                     print 'Error:', systName, 'not assigned to any breakdown category'
@@ -180,6 +196,13 @@ if __name__ == '__main__':
                         graphScaleFactors[method] = graphMetod
                         graphScaleFactorsTotal[method] = graphMetodTotal
 
+                        # Finally, apply masks for this method
+                        for ptbin in measuredScaleFactors.keys():
+                            if method in measuredScaleFactors[ptbin]:
+                                if method in maskedMethods or (method in maskedMeasurements and ptbin in maskedMeasurements[method]):
+                                    del measuredScaleFactors[ptbin][method]
+                            if len(measuredScaleFactors[ptbin].keys())==0: del measuredScaleFactors[ptbin]
+
                 # Build the matrices for the fit
                 nMeasurements, nCombinedScaleFactors = 0, len(measuredScaleFactors.keys())
                 for ptbin in measuredScaleFactors: nMeasurements += len(measuredScaleFactors[ptbin].keys())
@@ -193,10 +216,15 @@ if __name__ == '__main__':
                 covarianceMatrix = ROOT.TMatrixD(nMeasurements, nMeasurements)
                 covarianceMatrix *= 0.
 
+                breakdownCovarianceMatrices = OrderedDict()
+
                 if opt.breaksyst:
-                    breakdownCovarianceMatrices = OrderedDict()
                     breakdownCovarianceMatrices['type1'] = ROOT.TMatrixD(nMeasurements, nMeasurements); breakdownCovarianceMatrices['type1'] *= 0.
                     breakdownCovarianceMatrices['type3'] = ROOT.TMatrixD(nMeasurements, nMeasurements); breakdownCovarianceMatrices['type3'] *= 0.
+
+                if opt.yearcorr:
+                    breakdownCovarianceMatrices['correlated']   = ROOT.TMatrixD(nMeasurements, nMeasurements); breakdownCovarianceMatrices['correlated']   *= 0.
+                    breakdownCovarianceMatrices['uncorrelated'] = ROOT.TMatrixD(nMeasurements, nMeasurements); breakdownCovarianceMatrices['uncorrelated'] *= 0.
 
                 row = 0
                 for iptbin, row_ptbin in enumerate(measuredScaleFactors):
@@ -232,6 +260,10 @@ if __name__ == '__main__':
                                                     breakdownCovarianceMatrices[syst] = ROOT.TMatrixD(nMeasurements, nMeasurements)
                                                     breakdownCovarianceMatrices[syst] *= 0.
                                                 breakdownCovarianceMatrices[syst][row][column] += matrixElement
+
+                                        if opt.yearcorr:
+                                            if syst in systematicYearCorrelated: breakdownCovarianceMatrices['correlated'][row][column] += matrixElement
+                                            if syst in systematicYearUncorrelated: breakdownCovarianceMatrices['uncorrelated'][row][column] += matrixElement
 
                                 column += 1
 
@@ -281,20 +313,19 @@ if __name__ == '__main__':
 
                 combinedScaleFactorUncertaintyBreakdownVectors = OrderedDict()
 
-                if opt.breaksyst:
 
-                    for syst in breakdownCovarianceMatrices:
+                for syst in breakdownCovarianceMatrices:
 
-                        breakdownAuxiliaryMatrix3 = ROOT.TMatrixD(nCombinedScaleFactors, nMeasurements)
-                        breakdownAuxiliaryMatrix3.Mult(coefficientsMatrix, breakdownCovarianceMatrices[syst])
+                    breakdownAuxiliaryMatrix3 = ROOT.TMatrixD(nCombinedScaleFactors, nMeasurements)
+                    breakdownAuxiliaryMatrix3.Mult(coefficientsMatrix, breakdownCovarianceMatrices[syst])
 
-                        scaleFactorUncertaintyBreakdownMatrix = ROOT.TMatrixD(nCombinedScaleFactors, nCombinedScaleFactors)
-                        scaleFactorUncertaintyBreakdownMatrix.Mult(breakdownAuxiliaryMatrix3, transposedCoefficientsMatrix)
+                    scaleFactorUncertaintyBreakdownMatrix = ROOT.TMatrixD(nCombinedScaleFactors, nCombinedScaleFactors)
+                    scaleFactorUncertaintyBreakdownMatrix.Mult(breakdownAuxiliaryMatrix3, transposedCoefficientsMatrix)
 
-                        combinedScaleFactorUncertaintyBreakdownVector = ROOT.TMatrixD(nCombinedScaleFactors, 1)
-                        for iptbin in range(nCombinedScaleFactors): combinedScaleFactorUncertaintyBreakdownVector[iptbin][0] = math.sqrt(scaleFactorUncertaintyBreakdownMatrix[iptbin][iptbin])
+                    combinedScaleFactorUncertaintyBreakdownVector = ROOT.TMatrixD(nCombinedScaleFactors, 1)
+                    for iptbin in range(nCombinedScaleFactors): combinedScaleFactorUncertaintyBreakdownVector[iptbin][0] = math.sqrt(scaleFactorUncertaintyBreakdownMatrix[iptbin][iptbin])
 
-                        combinedScaleFactorUncertaintyBreakdownVectors[syst] = combinedScaleFactorUncertaintyBreakdownVector
+                    combinedScaleFactorUncertaintyBreakdownVectors[syst] = combinedScaleFactorUncertaintyBreakdownVector
 
                 # Compute the fit chi2 
                 normalizedChi2 = 0.
@@ -305,13 +336,29 @@ if __name__ == '__main__':
                             for ptbin1 in range(nCombinedScaleFactors):
                                 normalizedChi2 += matrixU[meas0][ptbin0]*(scaleFactorVector[meas0][0]-combinedScaleFactorVector[ptbin0][0])*inverseCovarianceMatrix[meas0][meas1]*matrixU[meas1][ptbin1]*(scaleFactorVector[meas1][0]-combinedScaleFactorVector[ptbin1][0])
 
-                normalizedChi2 /= (nMeasurements - nCombinedScaleFactors)
+                if nMeasurements>nCombinedScaleFactors: normalizedChi2 /= (nMeasurements - nCombinedScaleFactors)
 
-                # Print results of the fit
-                print '\nFit performed for combination', comb, 'algorithm', algo, 'working point', wp, 'with normalized Chi2 =', normalizedChi2, '\n'
-                for iptbin, ptbin in enumerate(measuredScaleFactors):
-                    print '    Combined scale factor for pt bin', ptbin, ':', combinedScaleFactorVector[iptbin][0], '+-', combinedScaleFactorUncertaintyVector[iptbin][0]
-                print '\n'
+                # Special error treatments, in case of mis-agreement between the scale factor measurements
+                if sampleDependence>0.:
+
+                    for iptbin in range(nCombinedScaleFactors):
+
+                        sampleDependenceUncertaintySquared = pow(sampleDependence*combinedScaleFactorVector[iptbin][0],2)
+                        combinedScaleFactorUncertaintyVector[iptbin][0] = math.sqrt(pow(combinedScaleFactorUncertaintyVector[iptbin][0],2)+sampleDependenceUncertaintySquared)
+                        for syst in [ 'type3', 'correlated' ]:
+                            if syst in combinedScaleFactorUncertaintyBreakdownVectors:
+                                combinedScaleFactorUncertaintyBreakdownVectors[syst][iptbin][0] = math.sqrt(pow(combinedScaleFactorUncertaintyBreakdownVectors[syst][iptbin][0],2)+sampleDependenceUncertaintySquared)
+
+                elif normalizedChi2>normalizedChi2Tollerance:
+
+                    for iptbin in range(nCombinedScaleFactors):
+
+                        chi2InflationFactor = math.sqrt(normalizedChi2)
+                        combinedScaleFactorUncertaintyVector[iptbin][0] *= chi2InflationFactor
+                        for syst in [ 'type1', 'uncorrelated' ]:
+                            if syst in combinedScaleFactorUncertaintyBreakdownVectors:
+                                chi2InflationSquared = pow(combinedScaleFactorUncertaintyVector[iptbin][0],2)*(1.-1./pow(chi2InflationFactor,2))
+                                combinedScaleFactorUncertaintyBreakdownVectors[syst][iptbin][0] = math.sqrt(pow(combinedScaleFactorUncertaintyBreakdownVectors[syst][iptbin][0],2)+chi2InflationSquared)
 
                 # Fit pt-dependence of combined scale factors
                 if opt.doptfit:
@@ -330,13 +377,27 @@ if __name__ == '__main__':
                         minCombinedPt = min(minCombinedPt, minPt)
                         maxCombinedPt = max(maxCombinedPt, maxPt)
 
-                    fittingFunction = ROOT.TF1('fittingFunction', fittingFunctions[comb][algo][wp], minCombinedPt, maxCombinedPt)
+                    fittingFunction = ROOT.TF1('fittingFunction', str(fittingFunctions[comb][algo][wp].GetExpFormula().ReplaceAll('p','')), minCombinedPt, maxCombinedPt)
+                    for par in range(fittingFunction.GetNpar()): fittingFunction.SetParameter(par, fittingFunctions[comb][algo][wp].GetParameter(par)) 
                     fittingFunction.SetLineColor(ROOT.kBlack)
                     fittingFunction.SetLineWidth(2)
                     fittingFunction.SetLineStyle(1)
 
                     graphCombinedScaleFactors.Fit('fittingFunction', '0',    '', minCombinedPt, maxCombinedPt)
                     graphCombinedScaleFactors.Fit('fittingFunction', 'rve0', '', minCombinedPt, maxCombinedPt)
+
+                # Print results
+                print '\nFit performed for combination', comb, 'algorithm', algo, 'working point', wp, 'with normalized Chi2 =', normalizedChi2, '\n'
+                for iptbin, ptbin in enumerate(measuredScaleFactors):
+                    print '    Combined scale factor for pt bin', ptbin, ':', round(combinedScaleFactorVector[iptbin][0],3), '+-', round(combinedScaleFactorUncertaintyVector[iptbin][0],3)
+                print '\n'
+
+                if opt.doptfit:
+                    print 'Pt-dependence function:', str(fittingFunction.GetExpFormula('p')), '\n' 
+                    for iptbin, ptbin in enumerate(measuredScaleFactors):
+                        midPt = (float(ptbin.split('-')[1].split('to')[0])+float(ptbin.split('to')[1]))/2.
+                        print '    Fitted scale factor for pt bin', ptbin, ':', round(fittingFunction.Eval(midPt),3), 'difference with combined scale factor:', round(fittingFunction.Eval(midPt)-combinedScaleFactorVector[iptbin][0],3)
+                print '\n'
 
                 # Store results for csv files 
                 if opt.store:
@@ -607,7 +668,7 @@ if __name__ == '__main__':
                     os.system('mkdir -p '+plotDirectory+'; cp '+opt.plotdir+'/index.php '+plotDirectory)
 
                     plotTitleList = [ 'SFb', opt.campaign, plotHeader.replace(' ','') ]
-                    for method in graphScaleFactors: plotTitleList.append(measurements[method]['plotname'])
+                    for method in graphScaleFactors: plotTitleList.append(('masked' if method in maskedMethods else '')+measurements[method]['plotname'])
 
                     for fileExtension in [ '.png', '.pdf', '.root', '.C' ]:
                         c1.Print(plotDirectory+'_'.join(plotTitleList)+fileExtension)

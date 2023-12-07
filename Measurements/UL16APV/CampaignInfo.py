@@ -1,5 +1,6 @@
 from collections import OrderedDict
 import math
+import ROOT
 
 # General data info
 campaignLuminosity = '19.5 fb^{-1}'
@@ -26,9 +27,9 @@ csvWorkingPoints = { 'Loose'  : ROOT.BTagEntry.OperatingPoint.OP_LOOSE,
                     } 
 
 # Some general uncertainty options
-addSampleDependence  = False
-sampleDependence     = 0.01 
-cJetsInflationFactor = { 'Loose' : 2.5, 'Medium' : 3.0, 'Tight' : 3.5 }
+sampleDependence         =   0. 
+normalizedChi2Tollerance = 999.
+cJetsInflationFactor     = { 'Loose' : 2.5, 'Medium' : 3.0, 'Tight' : 3.5 }
 
 # Measurements
 combinations = [ 'comb', 'mujets' ]
@@ -45,6 +46,10 @@ for method in measurements:
     measurements[method]['csvname'] = method.lower()
     measurements[method]['legname'] = method.replace('System8','System-8')
 
+vetoedMethods = []
+maskedMethods = []
+maskedMeasurements = { 'Kin' : [ 'Pt-300to600' ] }
+
 # Function for pt-dependence fit
 fittingFunctions = {}
 for comb in combinations:
@@ -53,9 +58,9 @@ for comb in combinations:
         fittingFunctions[comb][algo] = {}
         for wp in workingPoints:
             if algo=='DeepCSV' and (wp=='Tight' or (wp=='Medium' and comb=='comb')):
-                fittingFunctions[comb][algo][wp] = '[0]+[1]*log(x+19)*log(x+18)*(3-[2]*log(x+18))'
+                fittingFunctions[comb][algo][wp] = ROOT.TF1('fittingFunction', '[0]+[1]*log(x+19)*log(x+18)*(3-[2]*log(x+18))', minPtCampaign, maxPtCampaign)
             else:
-                fittingFunctions[comb][algo][wp] = '[0]*(1.+[1]*x)/(1.+[2]*x)'
+                fittingFunctions[comb][algo][wp] = ROOT.TF1('fittingFunction', '[0]*(1.+[1]*x)/(1.+[2]*x)', minPtCampaign, maxPtCampaign)
 
 # Systematic breakdown categories
 type1Systematics = [ 'statistic' ]
@@ -66,6 +71,11 @@ type3Systematics = [ 'mupt', 'gluonsplitting', 'jetaway', 'mudr', 'cb', 'ttbarmo
 systematicPtCorrelated = [ 'pileup', 'mupt', 'bfragmentation', 'cfragmentation', 'mudr', 'cb', 'jes', 'ltothers', 'jer', 'flavFrac', 'scale1', 'ps', 'topmass', 'mtop', 'hdamp', 'qcdscale', 'isrDef', 'fsrDef', 'isrdef', 'fsrdef', 'tuneCP5', 'tunecp5', 'bdecay', 'mescales', 'psscale', 'tune' ]
 systematicPtUncorrelated = [ 'statistic', 'gluonsplitting', 'jetaway', 'ttbarmodelling', 'l2c', 'ptrel', 'ipbias', 'tt', 'kt', 'tct', 'ntrk', 'njet', 'jeta', 'dmux', 'ksl', 'ntrkgen', 'btempcorr', 'ltempcorr', 'bkg', 'met', 'hpp', 'sel', 'trig', 'tWth', 'csv', 'cjets', 'mistag', 'nonttXsec' ]
 ptCorrelationCoefficients = { 'ltothers' : 0.5 }
+
+systematicYearCorrelated = [ 'pileup', 'bfragmentation', 'cfragmentation', 'topmass', 'mtop', 'hdamp', 'qcdscale', 'isrDef', 'fsrDef', 'isrdef', 'fsrdef', 'tuneCP5', 'tunecp5' ]
+systematicYearCorrelated.extend(type3Systematics)
+systematicYearUncorrelated = [ 'jes', 'jer' ]
+systematicYearUncorrelated.extend(type1Systematics)
 
 # Statistical correlations
 statisticalCorrelationCoefficients = {}
