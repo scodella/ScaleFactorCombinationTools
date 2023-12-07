@@ -33,8 +33,8 @@ if __name__ == '__main__':
     (opt, args) = parser.parse_args()
 
     # Read campaign info
-    if os.path.exists('./Measurements/'+opt.campaign+'/CampaignInfo.py'):
-        handle = open('./Measurements/'+opt.campaign+'/CampaignInfo.py','r')
+    if os.path.exists('./Measurements/'+opt.campaign+'/campaignInfo.py'):
+        handle = open('./Measurements/'+opt.campaign+'/campaignInfo.py','r')
         exec(handle)
         handle.close() 
 
