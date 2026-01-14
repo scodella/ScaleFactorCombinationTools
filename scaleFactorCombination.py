@@ -34,6 +34,7 @@ if __name__ == '__main__':
     parser.add_option('--publish'        , dest='publish'        , help='Publish csv file version'       , default='')
     parser.add_option('--plotdir'        , dest='plotdir'        , help='Output directory for plots'     , default='./Plots')
     parser.add_option('--csvfiledir'     , dest='csvfiledir'     , help='Output directory for csv files' , default='./CSVFiles')
+    parser.add_option('--ignoremismatch' , dest='ignoremismatch' , help='Ignore error mismatch'          , default=False, action='store_true')
     (opt, args) = parser.parse_args()
 
     # Some setting
@@ -43,7 +44,7 @@ if __name__ == '__main__':
 
     if os.environ.get('CMSSW_VERSION') is None or int(os.environ['CMSSW_VERSION'].split('_')[1])<=13: opt.standalone = True
     
-    #ROOT.gROOT.ProcessLine('gErrorIgnoreLevel = 1001;')
+    ROOT.gROOT.ProcessLine('gErrorIgnoreLevel = 1001;')
 
     if opt.storebybins or opt.breaksyst or opt.yearcorr or opt.publish!='': opt.store = True
 
@@ -83,7 +84,10 @@ if __name__ == '__main__':
 
     if opt.workingpoint!='all':
        for wp in list(workingPoints.keys()):
-           if wp.lower() not in opt.workingpoint.lower(): del workingPoints[wp]
+           keepWP = False
+           for wp2keep in opt.workingpoint.split(','):
+               if wp.lower()==wp2keep.lower(): keepWP = True
+           if not keepWP: del workingPoints[wp]
 
     if opt.vetomethod!='None':
         for method in list(measurements.keys()):
@@ -176,11 +180,13 @@ if __name__ == '__main__':
                             if method in  measuredScaleFactors[ptbin]:
 
                                 measuredScaleFactors[ptbin][method]['systematics'] = {}
+                                total_systematics_up, total_systematics_down = 0., 0.
+                                total_systematics_up_signed, total_systematics_down_signed = 0., 0.
                                 for syst in list(measuredScaleFactors[ptbin][method].keys()):
-                                    if syst!='central':
+                                    if syst!='central' and syst!='systematics':
                                     
                                         systName = 'total' if '_' not in syst else syst.split('_')[1]
-                                        if systName not in measuredScaleFactors[ptbin][method]:
+                                        if systName not in measuredScaleFactors[ptbin][method]['systematics']:
 
                                             upSF   = measuredScaleFactors[ptbin][method]['up']   if systName=='total' else measuredScaleFactors[ptbin][method]['up_'+systName]
                                             downSF = measuredScaleFactors[ptbin][method]['down'] if systName=='total' else measuredScaleFactors[ptbin][method]['down_'+systName]
@@ -189,6 +195,15 @@ if __name__ == '__main__':
                                             measuredScaleFactors[ptbin][method]['systematics'][systName] = math.copysign((abs(upSyst)+abs(downSyst))/2., upSyst)
 
                                             if systName!='total':
+
+                                                total_systematics_up += upSyst*upSyst
+                                                total_systematics_down += downSyst*downSyst
+                                                if upSyst>0.:
+                                                    total_systematics_up_signed += upSyst*upSyst
+                                                    total_systematics_down_signed += downSyst*downSyst
+                                                else:                                                            
+                                                    total_systematics_down_signed += upSyst*upSyst
+                                                    total_systematics_up_signed += downSyst*downSyst
 
                                                 if systName not in systematicPtCorrelated and systName not in systematicPtUncorrelated: 
                                                     print('Error:', systName, 'not assigned as pt-correlated nor as pt-uncorrelated')
@@ -212,7 +227,38 @@ if __name__ == '__main__':
 
                                                 if (systName in type1Systematics and systName in type2Systematics) or (systName in type1Systematics and systName in type3Systematics) or (systName in type2Systematics and systName in type3Systematics):
                                                     print('Error:', systName, 'assigned to more than one breakdown category')
-                                                    exit()                                          
+                                                    exit()
+
+                                total_systematics_up_signed = math.sqrt(total_systematics_up_signed)
+                                total_systematics_down_signed = math.sqrt(total_systematics_down_signed)
+                                total_systematics_up = math.sqrt(total_systematics_up)
+                                total_systematics_down = math.sqrt(total_systematics_down)
+                                total_up = measuredScaleFactors[ptbin][method]['up']-measuredScaleFactors[ptbin][method]['central']
+                                total_down = measuredScaleFactors[ptbin][method]['central']-measuredScaleFactors[ptbin][method]['down']
+                                minUpDiff = total_up-total_systematics_up if abs(total_systematics_up-total_up)<abs(total_systematics_up_signed-total_up) else total_up-total_systematics_up_signed
+                                minDownDiff = total_down-total_systematics_down if abs(total_systematics_down-total_down)<abs(total_systematics_down_signed-total_down) else total_down-total_systematics_down_signed
+                                if minUpDiff<-0.02 or minDownDiff<-0.02:
+                                    print('Error: total error smaller than the sum of the systematics for method', method, ', algorithm', algo, ', working point', wp, ', ptbin', ptbin, ':', total_up, minUpDiff, total_down, minDownDiff)
+                                    exit()
+                                if minUpDiff>2e-03 or minDownDiff>2e-03:
+                                    print('Error: total error does not match the sum of the systematics for method', method, ', algorithm', algo, ', working point', wp, ', ptbin', ptbin, ':', total_up, minUpDiff, total_down, minDownDiff)
+                                    if method+'method' in type3Systematics and (method+'method' in systematicPtCorrelated or method+'method' in systematicPtUncorrelated) and not (method+'method' in systematicPtCorrelated and method+'method' in systematicPtUncorrelated) and (method+'method' in systematicYearCorrelated or method+'method' in systematicYearUncorrelated) and not (method+'method' in systematicYearCorrelated and method+'method' in systematicYearUncorrelated):
+                                        print('... fixing it')
+                                        upMethodError = math.sqrt(total_up*total_up-(total_up-minUpDiff)*(total_up-minUpDiff))
+                                        downMethodError = math.sqrt(total_down*total_down-(total_down-minDownDiff)*(total_down-minDownDiff))
+                                        measuredScaleFactors[ptbin][method]['systematics'][method+'method'] = max(upMethodError,downMethodError)
+                                    elif not opt.ignoremismatch:
+                                        print('... to fix the mismatch, please declare the method error in the campaign info')
+                                        exit()
+                                    elif minUpDiff<10.02 and minDownDiff<10.02:
+                                        pass
+                                        #upAddError = math.sqrt(total_up*total_up-(total_up-minUpDiff)*(total_up-minUpDiff))
+                                        #downAddError = math.sqrt(total_down*total_down-(total_down-minDownDiff)*(total_down-minDownDiff))
+                                        #addError = max(upAddError,downAddError)
+                                        #measuredScaleFactors[ptbin][method]['systematics']['statistic'] = math.sqrt(measuredScaleFactors[ptbin][method]['systematics']['statistic']*measuredScaleFactors[ptbin][method]['systematics']['statistic']+addError*addError)
+                                    else:
+                                        print('... difference too big to be ignored!')
+                                        exit()
 
                         # ... the graph to be used for the final plots
                         graphMetod, graphMetodTotal = ROOT.TGraphErrors(), ROOT.TGraphErrors() 
@@ -245,7 +291,7 @@ if __name__ == '__main__':
                         # Finally, apply masks for this method
                         for ptbin in list(measuredScaleFactors.keys()):
                             if method in measuredScaleFactors[ptbin]:
-                                if method in maskedMethods or (method in maskedMeasurements and ptbin in maskedMeasurements[method]):
+                                if method in maskedMethods or (method in maskedMeasurements and algo in maskedMeasurements[method] and wp in maskedMeasurements[method][algo] and (ptbin in maskedMeasurements[method][algo][wp] or 'all' in maskedMeasurements[method][algo][wp])):
                                     del measuredScaleFactors[ptbin][method]
                             if len(list(measuredScaleFactors[ptbin].keys()))==0: del measuredScaleFactors[ptbin]
 
@@ -295,6 +341,7 @@ if __name__ == '__main__':
                                             if row_method+'-'+column_method in statisticalCorrelationCoefficients[syst]:
                                                 if row_ptbin in statisticalCorrelationCoefficients[syst][row_method+'-'+column_method]:
                                                     matrixElement *= statisticalCorrelationCoefficients[syst][row_method+'-'+column_method][row_ptbin]
+                                            elif syst=='statistic': continue
 
                                         covarianceMatrix[row][column] += matrixElement
 
@@ -344,6 +391,7 @@ if __name__ == '__main__':
                 # Get the scale factors and their uncertainties
                 combinedScaleFactorVector = ROOT.TMatrixD(nCombinedScaleFactors, 1)
                 combinedScaleFactorVector.Mult(coefficientsMatrix, scaleFactorVector)
+                #coefficientsMatrix.Print()
 
                 transposedCoefficientsMatrix = ROOT.TMatrixD(nMeasurements, nCombinedScaleFactors)
                 transposedCoefficientsMatrix.Transpose(coefficientsMatrix)
@@ -353,12 +401,12 @@ if __name__ == '__main__':
 
                 scaleFactorUncertaintyMatrix = ROOT.TMatrixD(nCombinedScaleFactors, nCombinedScaleFactors)
                 scaleFactorUncertaintyMatrix.Mult(auxiliaryMatrix3, transposedCoefficientsMatrix)
-             
+            
                 combinedScaleFactorUncertaintyVector = ROOT.TMatrixD(nCombinedScaleFactors, 1)
-                for iptbin in range(nCombinedScaleFactors): combinedScaleFactorUncertaintyVector[iptbin][0] = math.sqrt(scaleFactorUncertaintyMatrix[iptbin][iptbin])
+                for iptbin in range(nCombinedScaleFactors): 
+                    combinedScaleFactorUncertaintyVector[iptbin][0] = math.sqrt(scaleFactorUncertaintyMatrix[iptbin][iptbin])
 
                 combinedScaleFactorUncertaintyBreakdownVectors = OrderedDict()
-
 
                 for syst in breakdownCovarianceMatrices:
 
@@ -454,10 +502,13 @@ if __name__ == '__main__':
                 print('\n')
 
                 if opt.doptfit:
-                    print('Pt-dependence function:', str(fittingFunction.GetExpFormula('p')), '\n') 
+                    print('Pt-dependence function:', str(fittingFunction.GetExpFormula('p')), '\n')
+                    chi2ptfit = 0.
                     for iptbin, ptbin in enumerate(measuredScaleFactors):
                         midPt = (float(ptbin.split('-')[1].split('to')[0])+float(ptbin.split('to')[1]))/2.
+                        chi2ptfit += pow((fittingFunction.Eval(midPt)-combinedScaleFactorVector[iptbin][0])/combinedScaleFactorUncertaintyVector[iptbin][0], 2)
                         print('    Fitted scale factor for pt bin', ptbin, ':', round(fittingFunction.Eval(midPt),3), 'difference with combined scale factor:', round(fittingFunction.Eval(midPt)-combinedScaleFactorVector[iptbin][0],3))
+                    print('    Chi2:', math.sqrt(chi2ptfit))
                 print('\n')
 
                 # Store results for csv files 
@@ -517,7 +568,7 @@ if __name__ == '__main__':
 
                 # Plot the results of the scale factor combination
                 if not opt.plotoff:
-    
+                 
                     canvasHight = 350 if opt.plotfitoff else 700
                     c1 = ROOT.TCanvas('c1','plots',200,0,700,canvasHight)
                     c1.SetFillColor(10)
@@ -526,7 +577,7 @@ if __name__ == '__main__':
      
                     padHight = 0.03 if opt.plotfitoff else 0.52
                     pad1 = ROOT.TPad('pad1','This is pad1',0.02,padHight,0.98,0.98,21)
-          
+ 
                     # Run2015B Setting
                     ROOT.gStyle.SetOptFit(0)
                     ROOT.gStyle.SetOptStat(0)
@@ -740,9 +791,11 @@ if __name__ == '__main__':
 
                     plotTitleList = [ 'SFb', opt.campaign, plotHeader.replace(' ',''), '_'.join(plotMeasurements) ]
 
-                    for fileExtension in [ '.png', '.pdf', '.root', '.C' ]:
+                    for fileExtension in [ '.png', '.pdf', '.root' ]: #, '.C' ]:
                         c1.Print(plotDirectory+'_'.join(plotTitleList)+fileExtension)
-                
+
+                    del c1
+
         # Store the results of the scale factor combinations for this algorithm
         if opt.store:
             with open(opt.csvfiledir+'/'+'_'.join(csvFileNameList)+'.csv', 'w') as f:
